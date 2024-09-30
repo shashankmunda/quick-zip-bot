@@ -1,5 +1,6 @@
 from typing import Iterator
 from asyncio import wait
+import asyncio
 from asyncio.tasks import FIRST_COMPLETED
 from zipfile import ZipFile
 from pathlib import Path
@@ -35,7 +36,7 @@ async def download_files(
             except IndexError:
                 pass
             else:
-                pending.add(m.download_media(file=root / (m.file.name or 'no_name')))
+                pending.add(asyncio.create_task(m.download_media(file=root / (m.file.name or 'no_name'))))
                 next_msg_index += 1
         
         if pending:

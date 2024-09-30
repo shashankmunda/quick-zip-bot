@@ -92,7 +92,7 @@ async def add_file_handler(event: MessageEvent):
     raise StopPropagation
 
 
-@bot.on(NewMessage(pattern='/zip (?P<name>\w+)'))
+@bot.on(NewMessage(pattern=r'/zip (?P<name>\w+)'))
 async def zip_handler(event: MessageEvent):
     """
     Zips the media of messages corresponding to the IDs saved for this user in
@@ -105,7 +105,7 @@ async def zip_handler(event: MessageEvent):
     else:
         try:
             messages = await bot.get_messages(
-                event.sender_id, ids=tasks[event.sender_id])
+                event.sender_id, ids=tasks[event.sender_id]['message_ids'])
             zip_size = sum([m.file.size for m in messages])
 
             if zip_size > 1024 * 1024 * 2000:   # zip_size > 1.95 GB approximately
