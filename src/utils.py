@@ -5,7 +5,6 @@ from asyncio.tasks import FIRST_COMPLETED
 from zipfile import ZipFile
 import aiofiles
 from pathlib import Path
-from bot import MessageEvent
 
 from telethon.tl.custom import Message
 
