@@ -100,8 +100,12 @@ async def zip_handler(event: MessageEvent):
     """
     if event.sender_id not in tasks:
         await event.respond('You must use /add first.')
+        return
+    
     elif not tasks[event.sender_id]:
         await event.respond('You must send me some files first.')
+        return
+    
     else:
         try:
             messages = await bot.get_messages(
@@ -110,15 +114,17 @@ async def zip_handler(event: MessageEvent):
 
             if zip_size > 1024 * 1024 * 2000:   # zip_size > 1.95 GB approximately
                 await event.respond('Total filesize don\'t must exceed 2.0 GB.')
-            else:
-                root = STORAGE / f'{event.sender_id}/'
-                zip_name = root / (event.pattern_match['name'] + '.zip')
+                return
+            
+            root = STORAGE / f'{event.sender_id}/'
+            root.mkdir(parents=True, exist_ok=True)
+            zip_name = root / (event.pattern_match['name'] + '.zip')
 
-                # Download files and add to zip with error handling
-                async for file in download_files(messages, CONC_MAX, root):
-                    await get_running_loop().run_in_executor(
-                        None, partial(add_to_zip, zip_name, file))
-                await event.respond('Done!', file=zip_name)
+            # Download files and add to zip with error handling
+            async for file in download_files(messages, CONC_MAX, root):
+                await get_running_loop().run_in_executor(
+                    None, partial(add_to_zip, zip_name, file))
+            await event.respond('Done!', file=zip_name)
         except Exception as e:
             logging.error(f"Error during file processing: {e}")
             await event.respond(f"An error occurred: {str(e)}")

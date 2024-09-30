@@ -3,7 +3,9 @@ from asyncio import wait
 import asyncio
 from asyncio.tasks import FIRST_COMPLETED
 from zipfile import ZipFile
+import aiofiles
 from pathlib import Path
+from bot import MessageEvent
 
 from telethon.tl.custom import Message
 
@@ -46,7 +48,7 @@ async def download_files(
                 yield Path(path)
 
 
-def add_to_zip(zip: Path, file: Path) -> None:
+async def add_to_zip(zip: Path, file: Path) -> None:
     """
     Appends a file to a zip file.
 
@@ -55,5 +57,6 @@ def add_to_zip(zip: Path, file: Path) -> None:
         file: the path to the file that must be added.
     """
     flag = 'a' if zip.is_file() else 'x'
-    with ZipFile(zip, flag) as zfile:
-        zfile.write(file, file.name)
+    async with aiofiles.open(file, 'rb') as f:
+        async with ZipFile(zip, flag) as zfile:
+            zfile.write(file, file.name)
