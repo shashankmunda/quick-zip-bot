@@ -193,13 +193,13 @@ async def upload_progress_callback(current, total, progress_message, last_messag
     new_message_content = f"\r[{bar}] \n <i>Uploaded {progress:.2f}%</i>"
     current_time = time.time()
     # Update message only if content has changed to avoid spamming the API
-    if last_message.get('content') != new_message_content and ((current_time - last_update_time.get('time', 0)) >= 5 or progress == 100):
+    if last_message.get('content') != new_message_content and ((current_time - last_update_time.get('time', 0)) >= 10 or progress == 100):
         try:
             await progress_message.edit(new_message_content, parse_mode='html')
-            if progress == 100:
-                await progress_message.delete()
             last_message['content'] = new_message_content
             last_update_time['time'] = current_time  # Update the last message content
+            if progress == 100:
+                await progress_message.delete()
         except Exception as e:
             print(f"Error updating message: {e}")
 

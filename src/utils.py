@@ -27,13 +27,13 @@ async def progress_callback(received_bytes: int, total_bytes: int, progress_mess
     filled_length = int(bar_length * received_bytes // total_bytes)
     bar = '■' * filled_length + '□' * (bar_length - filled_length)
     new_message_content = f"\r[{bar}] \n <i>Downloaded {progress:.2f}%</i>"
-    if last_message.get('content') != new_message_content and ((current_time - last_update_time.get('time', 0)) >= 5 or progress == 100):
+    if last_message.get('content') != new_message_content and ((current_time - last_update_time.get('time', 0)) >= 10 or progress == 100):
         try:
             await progress_message.edit(new_message_content, parse_mode='html')
-            if progress == 100:
-                await progress_message.delete()
             last_message['content'] = new_message_content
             last_update_time['time'] = current_time
+            if progress == 100:
+                await progress_message.delete()
         except Exception as e:
             print(f"Error updating message: {e}")
 
