@@ -5,14 +5,43 @@ import asyncio
 from asyncio.tasks import FIRST_COMPLETED
 from zipfile import ZipFile
 from pathlib import Path
+import time
+from telethon import TelegramClient
 
 from telethon.tl.custom import Message
 
+async def progress_callback(received_bytes: int, total_bytes: int, progress_message: Message, last_message: dict, last_update_time: dict):
+    """
+    Callback function to display download progress and update a message to the user.
+    
+    Args:
+        received_bytes: The number of bytes downloaded so far.
+        total_bytes: The total number of bytes to be downloaded.
+        progress_message: The message that should be edited to display progress.
+        last_message: A dictionary to track the last message content to avoid unnecessary edits.
+        last_update_time: A dictionary to track the last update time.
+    """
+    current_time = time.time()
+    progress = (received_bytes / total_bytes) * 100
+    bar_length = 20
+    filled_length = int(bar_length * received_bytes // total_bytes)
+    bar = '■' * filled_length + '□' * (bar_length - filled_length)
+    new_message_content = f"\r[{bar}] \n <i>Downloaded {progress:.2f}%</i>"
+    if last_message.get('content') != new_message_content and ((current_time - last_update_time.get('time', 0)) >= 5 or progress == 100):
+        try:
+            await progress_message.edit(new_message_content, parse_mode='html')
+            if progress == 100:
+                await progress_message.delete()
+            last_message['content'] = new_message_content
+            last_update_time['time'] = current_time
+        except Exception as e:
+            print(f"Error updating message: {e}")
 
 async def download_files(
+    client: TelegramClient,
     msgs: list[Message],
     conc_max: int = 3,
-    root: Path | None = None
+    root: Path | None = None,
 ) -> Iterator[Path]:
     """
     Downloads the file if present for each message.
@@ -37,15 +66,28 @@ async def download_files(
             except IndexError:
                 pass
             else:
+                 # Send a new message to the user indicating that the download started
+                progress_message = await client.send_message(msg.chat_id, "Download starting...")
+                last_message = {'content': ''}
+                last_update_time = {'time': 0}
+
                 if msg.grouped_id:
                     grouped_msgs = await _get_media_posts_in_group(msg.chat_id,msg)
                     for grouped_msg in grouped_msgs:
                         logging.info(f'Downloading {grouped_msg.file.name}')
-                        pending.add(asyncio.create_task(msg.download_media(file=root / (grouped_msg.file.name or 'no_name'))))
+                        pending.add(asyncio.create_task(msg.download_media(
+                            file=root / (grouped_msg.file.name or 'no_name'),
+                            progress_callback = lambda received, total: progress_callback(received, total, progress_message, last_message, last_update_time)
+                            )
+                        ))
                         next_msg_index += 1  
                 else:
                     logging.info(f'Downloading {msg.file.name}')
-                    pending.add(asyncio.create_task(msg.download_media(file=root / (msg.file.name or 'no_name'))))
+                    pending.add(asyncio.create_task(msg.download_media(
+                        file=root / (msg.file.name or 'no_name'),
+                        progress_callback = lambda received, total: progress_callback(received, total, progress_message, last_message, last_update_time)
+                        )
+                    ))
                     next_msg_index += 1
         
         if pending:
@@ -60,7 +102,7 @@ async def download_files(
                     print(f"Error downloading file: {e}")
 
 
-def add_to_zip(zip: Path, file: Path) -> None:
+def add_to_zip(zip_file: Path, file: Path) -> None:
     """
     Appends a file to a zip file.
 
@@ -68,10 +110,15 @@ def add_to_zip(zip: Path, file: Path) -> None:
         zip: the zip file path.
         file: the path to the file that must be added.
     """
-    flag = 'a' if zip.is_file() else 'x'
-    with ZipFile(zip, flag) as zfile:
-        zfile.write(file, file.name)
-    file.unlink(True)
+    flag = 'a' if zip_file.is_file() else 'x'
+    try:
+        with ZipFile(zip_file, flag) as zfile:
+            zfile.write(file, file.name)
+        file.unlink(True)
+    except PermissionError as e: 
+        raise PermissionError(f"Permission denied: {e}")
+    except Exception as e: 
+        raise RuntimeError(f"An error occured while adding '{file}' to '{zip_file}': {e}")
 
 async def _get_media_posts_in_group(chat, original_post, max_amp=10):
     """

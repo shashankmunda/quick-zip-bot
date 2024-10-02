@@ -121,10 +121,18 @@ async def zip_handler(event: MessageEvent):
             zip_name = root / (event.pattern_match['name'] + '.zip')
 
             # Download files and add to zip with error handling
-            async for file in download_files(messages, CONC_MAX, root):
+            async for file in download_files(bot,messages, CONC_MAX, root):
                 await get_running_loop().run_in_executor(
                     None, partial(add_to_zip, zip_name, file))
-            await event.respond('Done!', file=zip_name)
+            progress_message = await event.respond('Preparing to upload your files...')
+            last_message = {'content': ''}
+            await bot.send_file(
+                event.chat_id,
+                caption='Done!',
+                file=zip_name,
+                progress_callback=lambda current, total: upload_progress_callback(current, total, progress_message, last_message)
+            )
+            
         except Exception as e:
             logging.error(f"Error during file processing: {e}")
             await event.respond(f"An error occurred: {str(e)}")
@@ -166,6 +174,31 @@ async def cancel_handler(event: MessageEvent):
 #         await asyncio.sleep(60)  # Check every minute
 
 # bot.loop.create_task(clean_old_tasks())
+
+async def upload_progress_callback(current, total, progress_message, last_message):
+    """
+    Callback function to track and update upload progress.
+
+    Args:
+        current: Number of bytes uploaded so far.
+        total: Total number of bytes to be uploaded.
+        progress_message: The message to be edited with upload progress.
+        last_message: Tracks the last message content to avoid unnecessary edits.
+    """
+    progress = (current / total) * 100
+    bar_length = 20
+    filled_length = int(bar_length * current // total)
+    bar = '■' * filled_length + '□' * (bar_length - filled_length)
+    new_message_content = f"\r[{bar}] \n <i>Uploaded {progress:.2f}%</i>"
+    # Update message only if content has changed to avoid spamming the API
+    if last_message.get('content') != new_message_content:
+        try:
+            await progress_message.edit(new_message_content, parse_mode='html')
+            if progress == 100:
+                await progress_message.delete()
+            last_message['content'] = new_message_content  # Update the last message content
+        except Exception as e:
+            print(f"Error updating message: {e}")
 
 if __name__ == '__main__':
     bot.run_until_disconnected()
