@@ -126,11 +126,12 @@ async def zip_handler(event: MessageEvent):
                     None, partial(add_to_zip, zip_name, file))
             progress_message = await event.respond('Preparing to upload your files...')
             last_message = {'content': ''}
+            last_update_time = {'time': 0}
             await bot.send_file(
                 event.chat_id,
                 caption='Done!',
                 file=zip_name,
-                progress_callback=lambda current, total: upload_progress_callback(current, total, progress_message, last_message)
+                progress_callback=lambda current, total: upload_progress_callback(current, total, progress_message, last_message, last_update_time)
             )
             
         except Exception as e:
@@ -175,7 +176,7 @@ async def cancel_handler(event: MessageEvent):
 
 # bot.loop.create_task(clean_old_tasks())
 
-async def upload_progress_callback(current, total, progress_message, last_message):
+async def upload_progress_callback(current, total, progress_message, last_message, last_update_time):
     """
     Callback function to track and update upload progress.
 
@@ -190,8 +191,9 @@ async def upload_progress_callback(current, total, progress_message, last_messag
     filled_length = int(bar_length * current // total)
     bar = '■' * filled_length + '□' * (bar_length - filled_length)
     new_message_content = f"\r[{bar}] \n <i>Uploaded {progress:.2f}%</i>"
+    current_time = time.time()
     # Update message only if content has changed to avoid spamming the API
-    if last_message.get('content') != new_message_content:
+    if last_message.get('content') != new_message_content and ((current_time - last_update_time.get('time', 0)) >= 5 or progress == 100):
         try:
             await progress_message.edit(new_message_content, parse_mode='html')
             if progress == 100:
