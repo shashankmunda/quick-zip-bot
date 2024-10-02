@@ -153,19 +153,19 @@ async def cancel_handler(event: MessageEvent):
 
     raise StopPropagation
 
-async def clean_old_tasks():
-    """
-    Periodically removes tasks that have exceeded the timeout.
-    """
-    while True:
-        current_time = time.time()
-        for user_id, task_info in list(tasks.items()):
-            if current_time - task_info['timestamp'] > TASK_TIMEOUT:
-                logging.info(f"Removing expired task for user {user_id}")
-                tasks.pop(user_id)
-        await asyncio.sleep(60)  # Check every minute
+# async def clean_old_tasks():
+#     """
+#     Periodically removes tasks that have exceeded the timeout.
+#     """
+#     while True:
+#         current_time = time.time()
+#         for user_id, task_info in list(tasks.items()):
+#             if current_time - task_info['timestamp'] > TASK_TIMEOUT:
+#                 logging.info(f"Removing expired task for user {user_id}")
+#                 tasks.pop(user_id)
+#         await asyncio.sleep(60)  # Check every minute
 
-bot.loop.create_task(clean_old_tasks())
+# bot.loop.create_task(clean_old_tasks())
 
 if __name__ == '__main__':
     bot.run_until_disconnected()
