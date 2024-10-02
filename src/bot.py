@@ -198,7 +198,8 @@ async def upload_progress_callback(current, total, progress_message, last_messag
             await progress_message.edit(new_message_content, parse_mode='html')
             if progress == 100:
                 await progress_message.delete()
-            last_message['content'] = new_message_content  # Update the last message content
+            last_message['content'] = new_message_content
+            last_update_time['time'] = current_time  # Update the last message content
         except Exception as e:
             print(f"Error updating message: {e}")
 
