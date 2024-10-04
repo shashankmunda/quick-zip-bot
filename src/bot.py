@@ -14,7 +14,7 @@ from telethon import TelegramClient
 from telethon.events import NewMessage, StopPropagation
 from telethon.tl.custom import Message
 
-from utils import download_files,upload_files, add_to_zip, upload_progress_callback
+from utils import download_files,upload_files, add_to_zip,is_approved_chat,is_admin,add_approved_chat,remove_approved_chat
 
 load_dotenv()
 
@@ -44,6 +44,30 @@ bot = TelegramClient(
     'quick-zip-bot', api_id=API_ID, api_hash=API_HASH
 ).start(bot_token=BOT_TOKEN)
 
+@bot.on(NewMessage(pattern='/approvechat'))
+async def add_chat(event):
+    user_id = event.sender_id
+    chat_id = event.chat_id
+
+    if not is_admin(user_id):
+        await event.reply("You are not authorized to run this command.")
+        return
+
+    add_approved_chat(chat_id)
+    await event.reply(f"Chat {chat_id} has been approved.")
+
+@bot.on(NewMessage(pattern='/removechat'))
+async def remove_chat(event):
+    user_id = event.sender_id
+    chat_id = event.chat_id
+
+    if not is_admin(user_id):
+        await event.reply("You are not authorized to run this command.")
+        return
+
+    remove_approved_chat(chat_id)
+    await event.reply(f"Chat {chat_id} has been removed from the approved list.")
+
 
 @bot.on(NewMessage(pattern='/add'))
 async def start_task_handler(event: MessageEvent):
@@ -64,7 +88,10 @@ async def welcome_handler(event: MessageEvent):
     """
     Sends a welcome message to the bot on start.
     """
-    await event.respond('Welcome to SM Bot 👋')
+    if is_approved_chat(event.chat_id):
+        await event.respond('Welcome to SM Bot 👋')
+    else:
+        await event.respond('This bot can only be run in approved chats.')
 
     raise StopPropagation
 
@@ -75,6 +102,10 @@ async def add_file_handler(event: MessageEvent):
     """
     Stores the ID of messages sended with files by this user.
     """
+    if not is_approved_chat(event.sender_id):
+        await event.respond('This bot can only be run in approved chats.')
+        return
+    
     if event.sender_id not in tasks:
         return
     
@@ -100,6 +131,10 @@ async def zip_handler(event: MessageEvent):
     Zips the media of messages corresponding to the IDs saved for this user in
     tasks. The zip filename must be provided in the command.
     """
+    if not is_approved_chat(event.sender_id):
+        await event.respond('This bot can only be run in approved chats.')
+        return
+    
     if event.sender_id not in tasks:
         await event.respond('You must use /add first.')
         return
@@ -171,8 +206,7 @@ async def clean_old_tasks():
 
 # Function to close the database connection on shutdown
 def shutdown_handler(signum, frame):
-    logging.info("Shutting down...",signum)
-    bot.send_message()  # close the PostgreSQL connection
+    logging.info("Shutting down...")
     sys.exit(0)
 
 signal.signal(signal.SIGINT, shutdown_handler)
