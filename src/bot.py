@@ -230,19 +230,19 @@ async def cancel_handler(event: MessageEvent):
 
     raise StopPropagation
 
-# async def clean_old_tasks():
-#     """
-#     Periodically removes tasks that have exceeded the timeout.
-#     """
-#     while True:
-#         current_time = time.time()
-#         for user_id, task_info in list(tasks.items()):
-#             if current_time - task_info['timestamp'] > TASK_TIMEOUT:
-#                 logging.info(f"Removing expired task for user {user_id}")
-#                 tasks.pop(user_id)
-#         await asyncio.sleep(60)  # Check every minute
+async def clean_old_tasks():
+    """
+    Periodically removes tasks that have exceeded the timeout.
+    """
+    while True:
+        current_time = time.time()
+        for user_id, task_info in list(tasks.items()):
+            if current_time - task_info['timestamp'] > TASK_TIMEOUT:
+                logging.info(f"Removing expired task for user {user_id}")
+                tasks.pop(user_id)
+        await asyncio.sleep(60)  # Check every minute
 
-# Function to close the database connection on shutdown
+#Function to close the database connection on shutdown
 def shutdown_handler(signum, frame):
     logging.info("Shutting down...")
     sys.exit(0)
