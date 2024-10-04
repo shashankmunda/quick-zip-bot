@@ -56,6 +56,8 @@ async def add_chat(event):
     add_approved_chat(chat_id)
     await event.reply(f"Chat {chat_id} has been approved.")
 
+    raise StopPropagation
+
 @bot.on(NewMessage(pattern='/removechat'))
 async def remove_chat(event):
     user_id = event.sender_id
@@ -67,6 +69,8 @@ async def remove_chat(event):
 
     remove_approved_chat(chat_id)
     await event.reply(f"Chat {chat_id} has been removed from the approved list.")
+
+    raise StopPropagation
 
 
 @bot.on(NewMessage(pattern='/add'))
@@ -124,6 +128,40 @@ async def add_file_handler(event: MessageEvent):
 
     raise StopPropagation
 
+@bot.on(NewMessage(pattern='/list'))
+async def list_files_handler(event: MessageEvent):
+    """
+    Lists the files currently added to the staging by the user
+    """
+    if not is_approved_chat(event.sender_id):
+        await event.respond('This bot can only be run in approved chats.')
+        return
+    
+    if event.sender_id not in tasks:
+        await event.respond('You must use /add first.')
+        return
+    
+    elif not tasks[event.sender_id]:
+        await event.respond('No files to compress.')
+        return
+    
+    else:
+        try:
+            messages = await bot.get_messages(
+                event.sender_id, ids=tasks[event.sender_id]['message_ids'])
+            files = [[m.file.name,m.file.mime_type] for m in messages]
+            msg=''
+            for i,file in enumerate(files): 
+                if i!=0: 
+                    msg+=f'\n'
+                msg+=f'{file[0]}:{file[1]}'
+            await event.respond(msg)
+
+        except Exception as e:
+            logging.error(f"Error during listing files: {e}")
+            await event.respond(f"An error occurred: {str(e)}")
+    
+    raise StopPropagation
 
 @bot.on(NewMessage(pattern=r'/zip (?P<name>[\w\s]+)'))
 async def zip_handler(event: MessageEvent):
