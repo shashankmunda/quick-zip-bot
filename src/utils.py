@@ -79,7 +79,7 @@ async def download_progress_callback(received_bytes: int, total_bytes: int, prog
     filled_length = int(bar_length * received_bytes // total_bytes)
     bar = '■' * filled_length + '□' * (bar_length - filled_length)
     new_message_content = f"\r[{bar}] \n <i>Downloaded {progress:.2f}%</i>"
-    if last_message.get('content') != new_message_content and ((current_time - last_update_time.get('time', 0)) >= 10 or progress == 100):
+    if progress_message and last_message.get('content') != new_message_content and ((current_time - last_update_time.get('time', 0)) >= 10 or progress == 100):
         try:
             await progress_message.edit(new_message_content, parse_mode='html')
             last_message['content'] = new_message_content
@@ -106,7 +106,7 @@ async def upload_progress_callback(current, total, progress_message, last_messag
     new_message_content = f"\r[{bar}] \n <i>Uploaded {progress:.2f}%</i>"
     current_time = time.time()
     # Update message only if content has changed to avoid spamming the API
-    if last_message.get('content') != new_message_content and ((current_time - last_update_time.get('time', 0)) >= 10 or progress == 100):
+    if progress_message and last_message.get('content') != new_message_content and ((current_time - last_update_time.get('time', 0)) >= 10 or progress == 100):
         try:
             await progress_message.edit(new_message_content, parse_mode='html')
             last_message['content'] = new_message_content
