@@ -1,14 +1,66 @@
 from typing import Iterator
 from asyncio import wait
-import logging
-import asyncio
 from asyncio.tasks import FIRST_COMPLETED
 from zipfile import ZipFile
 from pathlib import Path
-import time
+import time,os,psycopg2,logging,asyncio
 from telethon import TelegramClient
-
+from dotenv import load_dotenv
 from telethon.tl.custom import Message
+from psycopg2 import pool
+
+
+load_dotenv()
+
+# Initialize the connection pool
+db_pool = psycopg2.pool.SimpleConnectionPool(
+    minconn=1, 
+    maxconn=10,  # adjust based on your needs
+    host=os.environ['DATABASE_HOST'],
+    database=os.environ['DATABASE_NAME'],
+    user=os.environ['DATABASE_USER'],
+    password=os.environ['DATABASE_PASSWORD']
+)
+
+# Get a connection from the pool
+def get_connection():
+    return db_pool.getconn()
+
+# Release the connection back to the pool
+def release_connection(conn):
+    db_pool.putconn(conn)
+
+def is_admin(user_id):
+    return user_id == os.environ['ADMIN_ID']
+
+# Modified function to check if chat is approved
+def is_approved_chat(chat_id):
+    conn = get_connection()
+    with conn.cursor() as cur:
+        cur.execute("SELECT chat_id FROM approved_chats WHERE chat_id = %s", (chat_id,))
+        result = cur.fetchone()
+    release_connection(conn)
+    return result is not None
+
+def add_approved_chat(chat_id):
+    conn = get_connection()
+    with conn.cursor() as cur:
+        try:
+            cur.execute("INSERT INTO approved_chats (chat_id) VALUES (%s) ON CONFLICT DO NOTHING", (chat_id,))
+            conn.commit()
+        except Exception as e:
+            print(f"Error adding chat: {e}")
+            conn.rollback()
+        finally:
+            release_connection(conn)
+
+# Function to remove a chat from the approved list (using PostgreSQL)
+def remove_approved_chat(chat_id):
+    conn = get_connection()
+    with conn.cursor() as cur:
+        cur.execute("DELETE FROM approved_chats WHERE chat_id = %s", (chat_id,))
+        conn.commit()
+        release_connection(conn)
 
 async def download_progress_callback(received_bytes: int, total_bytes: int, progress_message: Message, last_message: dict, last_update_time: dict):
     """
@@ -27,7 +79,7 @@ async def download_progress_callback(received_bytes: int, total_bytes: int, prog
     filled_length = int(bar_length * received_bytes // total_bytes)
     bar = '■' * filled_length + '□' * (bar_length - filled_length)
     new_message_content = f"\r[{bar}] \n <i>Downloaded {progress:.2f}%</i>"
-    if last_message.get('content') != new_message_content and ((current_time - last_update_time.get('time', 0)) >= 10 or progress == 100):
+    if progress_message and last_message.get('content') != new_message_content and ((current_time - last_update_time.get('time', 0)) >= 10 or progress == 100):
         try:
             await progress_message.edit(new_message_content, parse_mode='html')
             last_message['content'] = new_message_content
@@ -54,7 +106,7 @@ async def upload_progress_callback(current, total, progress_message, last_messag
     new_message_content = f"\r[{bar}] \n <i>Uploaded {progress:.2f}%</i>"
     current_time = time.time()
     # Update message only if content has changed to avoid spamming the API
-    if last_message.get('content') != new_message_content and ((current_time - last_update_time.get('time', 0)) >= 10 or progress == 100):
+    if progress_message and last_message.get('content') != new_message_content and ((current_time - last_update_time.get('time', 0)) >= 10 or progress == 100):
         try:
             await progress_message.edit(new_message_content, parse_mode='html')
             last_message['content'] = new_message_content
