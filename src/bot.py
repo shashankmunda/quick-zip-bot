@@ -92,7 +92,7 @@ async def add_file_handler(event: MessageEvent):
     raise StopPropagation
 
 
-@bot.on(NewMessage(pattern=r'/zip (?P<name>\w+)'))
+@bot.on(NewMessage(pattern=r'/zip (?P<name>[\w\s]+)'))
 async def zip_handler(event: MessageEvent):
     """
     Zips the media of messages corresponding to the IDs saved for this user in
@@ -118,7 +118,7 @@ async def zip_handler(event: MessageEvent):
             
             root = STORAGE / f'{event.sender_id}/'
             root.mkdir(parents=True, exist_ok=True)
-            zip_name = root / (event.pattern_match['name'] + '.zip')
+            zip_name = root / (event.pattern_match['name'].strip() + '.zip')
 
             # Download files and add to zip with error handling
             async for file in download_files(bot,messages, CONC_MAX, root):
