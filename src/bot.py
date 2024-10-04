@@ -12,7 +12,7 @@ from telethon import TelegramClient
 from telethon.events import NewMessage, StopPropagation
 from telethon.tl.custom import Message
 
-from utils import download_files, add_to_zip
+from utils import download_files,upload_files, add_to_zip, upload_progress_callback
 
 load_dotenv()
 
@@ -124,15 +124,8 @@ async def zip_handler(event: MessageEvent):
             async for file in download_files(bot,messages, CONC_MAX, root):
                 await get_running_loop().run_in_executor(
                     None, partial(add_to_zip, zip_name, file))
-            progress_message = await event.respond('Preparing to upload your files...')
-            last_message = {'content': ''}
-            last_update_time = {'time': 0}
-            await bot.send_file(
-                event.chat_id,
-                caption='Done!',
-                file=zip_name,
-                progress_callback=lambda current, total: upload_progress_callback(current, total, progress_message, last_message, last_update_time)
-            )
+            
+            await upload_files(bot,event,zip_name)
             
         except Exception as e:
             logging.error(f"Error during file processing: {e}")
@@ -175,33 +168,6 @@ async def cancel_handler(event: MessageEvent):
 #         await asyncio.sleep(60)  # Check every minute
 
 # bot.loop.create_task(clean_old_tasks())
-
-async def upload_progress_callback(current, total, progress_message, last_message, last_update_time):
-    """
-    Callback function to track and update upload progress.
-
-    Args:
-        current: Number of bytes uploaded so far.
-        total: Total number of bytes to be uploaded.
-        progress_message: The message to be edited with upload progress.
-        last_message: Tracks the last message content to avoid unnecessary edits.
-    """
-    progress = (current / total) * 100
-    bar_length = 20
-    filled_length = int(bar_length * current // total)
-    bar = '■' * filled_length + '□' * (bar_length - filled_length)
-    new_message_content = f"\r[{bar}] \n <i>Uploaded {progress:.2f}%</i>"
-    current_time = time.time()
-    # Update message only if content has changed to avoid spamming the API
-    if last_message.get('content') != new_message_content and ((current_time - last_update_time.get('time', 0)) >= 10 or progress == 100):
-        try:
-            await progress_message.edit(new_message_content, parse_mode='html')
-            last_message['content'] = new_message_content
-            last_update_time['time'] = current_time  # Update the last message content
-            if progress == 100:
-                await progress_message.delete()
-        except Exception as e:
-            print(f"Error updating message: {e}")
 
 if __name__ == '__main__':
     bot.run_until_disconnected()
