@@ -27,13 +27,13 @@ async def progress_callback(received_bytes: int, total_bytes: int, progress_mess
     filled_length = int(bar_length * received_bytes // total_bytes)
     bar = '■' * filled_length + '□' * (bar_length - filled_length)
     new_message_content = f"\r[{bar}] \n <i>Downloaded {progress:.2f}%</i>"
-    if last_message.get('content') != new_message_content and ((current_time - last_update_time.get('time', 0)) >= 5 or progress == 100):
+    if last_message.get('content') != new_message_content and ((current_time - last_update_time.get('time', 0)) >= 10 or progress == 100):
         try:
             await progress_message.edit(new_message_content, parse_mode='html')
-            if progress == 100:
-                await progress_message.delete()
             last_message['content'] = new_message_content
             last_update_time['time'] = current_time
+            if progress == 100:
+                await progress_message.delete()
         except Exception as e:
             print(f"Error updating message: {e}")
 
@@ -75,7 +75,7 @@ async def download_files(
                     grouped_msgs = await _get_media_posts_in_group(msg.chat_id,msg)
                     for grouped_msg in grouped_msgs:
                         logging.info(f'Downloading {grouped_msg.file.name}')
-                        pending.add(asyncio.create_task(msg.download_media(
+                        pending.add(asyncio.create_task(grouped_msg.download_media(
                             file=root / (grouped_msg.file.name or 'no_name'),
                             progress_callback = lambda received, total: progress_callback(received, total, progress_message, last_message, last_update_time)
                             )
