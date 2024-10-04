@@ -6,6 +6,8 @@ import logging
 import os
 import time
 import asyncio
+import signal
+import sys
 
 from dotenv import load_dotenv
 from telethon import TelegramClient
@@ -166,6 +168,15 @@ async def clean_old_tasks():
                 logging.info(f"Removing expired task for user {user_id}")
                 tasks.pop(user_id)
         await asyncio.sleep(60)  # Check every minute
+
+# Function to close the database connection on shutdown
+def shutdown_handler(signum, frame):
+    logging.info("Shutting down...",signum)
+    bot.send_message()  # close the PostgreSQL connection
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, shutdown_handler)
+signal.signal(signal.SIGTERM, shutdown_handler)
 
 bot.loop.create_task(clean_old_tasks())
 
