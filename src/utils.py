@@ -75,7 +75,7 @@ async def download_files(
                     grouped_msgs = await _get_media_posts_in_group(msg.chat_id,msg)
                     for grouped_msg in grouped_msgs:
                         logging.info(f'Downloading {grouped_msg.file.name}')
-                        pending.add(asyncio.create_task(msg.download_media(
+                        pending.add(asyncio.create_task(grouped_msg.download_media(
                             file=root / (grouped_msg.file.name or 'no_name'),
                             progress_callback = lambda received, total: progress_callback(received, total, progress_message, last_message, last_update_time)
                             )
