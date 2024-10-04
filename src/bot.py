@@ -154,8 +154,8 @@ async def list_files_handler(event: MessageEvent):
             for i,file in enumerate(files): 
                 if i!=0: 
                     msg+=f'\n'
-                msg+=f'{file[0]}:{file[1]}'
-            await event.respond(msg)
+                msg+=f'<b>{file[0]}:{file[1]}</b>'
+            await event.respond(msg, parse_mode='html')
 
         except Exception as e:
             logging.error(f"Error during listing files: {e}")
