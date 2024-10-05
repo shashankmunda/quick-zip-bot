@@ -103,7 +103,7 @@ async def upload_progress_callback(current_bytes, total_bytes,zipfile, progress_
     bar_length = 20
     filled_length = int(bar_length * current_bytes // total_bytes)
     bar = '■' * filled_length + '□' * (bar_length - filled_length)
-    new_message_content = f"\r[{bar}] \n <i>Uploading <b>{zipfile}</b> \n {current/(1024*1024):.2f}/{total/(1024*1024):.2f} MB done ({progress:.2f}%)</i>"
+    new_message_content = f"\r[{bar}] \n <i>Uploading <b>{zipfile}</b> \n {current_bytes/(1024*1024):.2f}/{total_bytes/(1024*1024):.2f} MB done ({progress:.2f}%)</i>"
     current_time = time.time()
     # Update message only if content has changed to avoid spamming the API
     if progress_message and last_message.get('content') != new_message_content and ((current_time - last_update_time.get('time', 0)) >= 10 or progress == 100):
@@ -119,7 +119,8 @@ async def upload_progress_callback(current_bytes, total_bytes,zipfile, progress_
 async def upload_files(
         client: TelegramClient, 
         event: any,
-        zipfile: any
+        zipfile: any,
+        file_title: any
 ):
     progress_message = await event.respond('Preparing to upload your files...')
     last_message = {'content': ''}
@@ -128,7 +129,7 @@ async def upload_files(
         event.chat_id,
         caption='Done!',
         file=zipfile,
-        progress_callback=lambda current, total: upload_progress_callback(current, total, zipfile.name, progress_message, last_message, last_update_time)
+        progress_callback=lambda current, total: upload_progress_callback(current, total, file_title, progress_message, last_message, last_update_time)
     )
 
 async def download_files(
