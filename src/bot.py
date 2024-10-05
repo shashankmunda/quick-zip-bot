@@ -200,7 +200,7 @@ async def zip_handler(event: MessageEvent):
                 await get_running_loop().run_in_executor(
                     None, partial(add_to_zip, zip_name, file))
             
-            await upload_files(bot,event,zip_name)
+            await upload_files(bot,event,zip_name,event.pattern_match['name'].strip() + '.zip')
             
         except Exception as e:
             logging.error(f"Error during file processing: {e}")
