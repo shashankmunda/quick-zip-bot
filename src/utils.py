@@ -62,7 +62,7 @@ def remove_approved_chat(chat_id):
         conn.commit()
         release_connection(conn)
 
-async def download_progress_callback(received_bytes: int, total_bytes: int, progress_message: Message, last_message: dict, last_update_time: dict):
+async def download_progress_callback(received_bytes: int, total_bytes: int, progress_message: Message, last_message: dict, last_update_time: dict, file_name: str = None):
     """
     Callback function to display download progress and update a message to the user.
     
@@ -78,7 +78,7 @@ async def download_progress_callback(received_bytes: int, total_bytes: int, prog
     bar_length = 20
     filled_length = int(bar_length * received_bytes // total_bytes)
     bar = '■' * filled_length + '□' * (bar_length - filled_length)
-    new_message_content = f"\r[{bar}] \n <i>Downloaded {progress:.2f}%</i>"
+    new_message_content = f"\r[{bar}] \n <i>Downloading <b>{file_name}</b> \n {received_bytes/(1024*1024):.2f}/{total_bytes/(1024*1024):.2f} MB ({progress:.2f})%</i>"
     if progress_message and last_message.get('content') != new_message_content and ((current_time - last_update_time.get('time', 0)) >= 10 or progress == 100):
         try:
             await progress_message.edit(new_message_content, parse_mode='html')
@@ -89,7 +89,7 @@ async def download_progress_callback(received_bytes: int, total_bytes: int, prog
         except Exception as e:
             print(f"Error updating message: {e}")
 
-async def upload_progress_callback(current, total, progress_message, last_message, last_update_time):
+async def upload_progress_callback(current_bytes, total_bytes,zipfile, progress_message, last_message, last_update_time):
     """
     Callback function to track and update upload progress.
 
@@ -99,11 +99,11 @@ async def upload_progress_callback(current, total, progress_message, last_messag
         progress_message: The message to be edited with upload progress.
         last_message: Tracks the last message content to avoid unnecessary edits.
     """
-    progress = (current / total) * 100
+    progress = (current_bytes / total_bytes) * 100
     bar_length = 20
-    filled_length = int(bar_length * current // total)
+    filled_length = int(bar_length * current_bytes // total_bytes)
     bar = '■' * filled_length + '□' * (bar_length - filled_length)
-    new_message_content = f"\r[{bar}] \n <i>Uploaded {current/(1024*1024)}/{total/(1024*1024)} MB ({progress:.2f}%)</i>"
+    new_message_content = f"\r[{bar}] \n <i>Uploading <b>{zipfile}</b> \n {current/(1024*1024):.2f}/{total/(1024*1024):.2f} MB done ({progress:.2f}%)</i>"
     current_time = time.time()
     # Update message only if content has changed to avoid spamming the API
     if progress_message and last_message.get('content') != new_message_content and ((current_time - last_update_time.get('time', 0)) >= 10 or progress == 100):
@@ -128,7 +128,7 @@ async def upload_files(
         event.chat_id,
         caption='Done!',
         file=zipfile,
-        progress_callback=lambda current, total: upload_progress_callback(current, total, progress_message, last_message, last_update_time)
+        progress_callback=lambda current, total: upload_progress_callback(current, total, zipfile.name, progress_message, last_message, last_update_time)
     )
 
 async def download_files(
@@ -171,7 +171,7 @@ async def download_files(
                         logging.info(f'Downloading {grouped_msg.file.name}')
                         pending.add(asyncio.create_task(grouped_msg.download_media(
                             file=root / (grouped_msg.file.name or 'no_name'),
-                            progress_callback = lambda received, total: download_progress_callback(received, total, progress_message, last_message, last_update_time)
+                            progress_callback = lambda received, total, progress_message=progress_message, last_message=last_message, last_update_time=last_update_time, file_name=grouped_msg.file.name: download_progress_callback(received, total, progress_message, last_message, last_update_time, file_name)
                             )
                         ))
                         next_msg_index += 1  
@@ -179,7 +179,7 @@ async def download_files(
                     logging.info(f'Downloading {msg.file.name}')
                     pending.add(asyncio.create_task(msg.download_media(
                         file=root / (msg.file.name or 'no_name'),
-                        progress_callback = lambda received, total: download_progress_callback(received, total, progress_message, last_message, last_update_time)
+                        progress_callback = lambda received, total, progress_message=progress_message, last_message=last_message, last_update_time=last_update_time, file_name= msg.file.name: download_progress_callback(received, total, progress_message, last_message, last_update_time, file_name)
                         )
                     ))
                     next_msg_index += 1
