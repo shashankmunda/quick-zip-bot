@@ -103,7 +103,7 @@ async def upload_progress_callback(current, total, progress_message, last_messag
     bar_length = 20
     filled_length = int(bar_length * current // total)
     bar = '■' * filled_length + '□' * (bar_length - filled_length)
-    new_message_content = f"\r[{bar}] \n <i>Uploaded {progress:.2f}%</i>"
+    new_message_content = f"\r[{bar}] \n <i>Uploaded {current/(1024*1024)}/{total/(1024*1024)} MB ({progress:.2f}%)</i>"
     current_time = time.time()
     # Update message only if content has changed to avoid spamming the API
     if progress_message and last_message.get('content') != new_message_content and ((current_time - last_update_time.get('time', 0)) >= 10 or progress == 100):
