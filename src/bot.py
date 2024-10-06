@@ -8,6 +8,7 @@ import time
 import asyncio
 import signal
 import sys
+from zipfile import ZipFile
 
 from dotenv import load_dotenv
 from telethon import TelegramClient
@@ -113,6 +114,9 @@ async def add_file_handler(event: MessageEvent):
     if event.sender_id not in tasks:
         return
     
+    if event.file.mime_type == 'application/zip' and tasks[event.sender_id]['message_ids']:
+        tasks.pop(event.sender_id)
+    
     message_size = event.file.size
     current_size = sum(
         [m.file.size for m in await bot.get_messages(event.sender_id, ids=tasks[event.sender_id]['message_ids'])]
@@ -215,6 +219,47 @@ async def zip_handler(event: MessageEvent):
 
     raise StopPropagation
 
+@bot.on(NewMessage(pattern='/unzip'))
+async def unzip_handler(event: MessageEvent):
+    """
+    Unzips a file and returns the extracted content.
+    """
+    if event.sender_id not in tasks:
+        await event.respond('You must send a zip file first.')
+    else:
+        # Download the zip file
+        messages = await bot.get_messages(event.sender_id, ids=tasks[event.sender_id]['message_ids'])
+        zip_file = messages[0]  # Assuming only one zip file is being sent
+
+        # Unzip the file
+        root = STORAGE / f'{event.sender_id}/'
+        zip_path = root / zip_file.file.name
+
+        await zip_file.download_media(file=zip_path)
+
+        try:
+            with ZipFile(zip_path, 'r') as zip_ref:
+                zip_ref.extractall(root)  # Extract the contents to the root folder
+             # Cleanup
+            zip_path.unlink()  # Remove the zip file after extraction
+            extracted_files = list(root.glob('*'))  # Get the list of extracted files
+            for file in extracted_files:
+                await event.respond(file=file)
+
+
+        except Exception as e:
+            await event.respond(f"Failed to unzip: {e}")
+
+        finally:
+            # Clean up files after sending or error
+            if (STORAGE / str(event.sender_id)).exists():
+                await get_running_loop().run_in_executor(
+                    None, rmtree, STORAGE / str(event.sender_id))
+            tasks.pop(event.sender_id)
+
+       
+
+    raise StopPropagation
 
 @bot.on(NewMessage(pattern='/cancel'))
 async def cancel_handler(event: MessageEvent):
