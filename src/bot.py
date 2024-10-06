@@ -244,7 +244,7 @@ async def unzip_handler(event: MessageEvent):
             zip_path.unlink()  # Remove the zip file after extraction
             extracted_files = list(root.glob('*'))  # Get the list of extracted files
             for file in extracted_files:
-                await event.respond(file=file)
+                await bot.send_file(file=file)
 
 
         except Exception as e:
