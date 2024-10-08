@@ -1,6 +1,6 @@
 FROM python:3.9-slim
 
-RUN sudo add-apt-repository multiverse && apt-get update && apt-get install -y \
+RUN add-apt-repository multiverse && apt-get update && apt-get install -y \
     unrar \
     rar \
     wget \
