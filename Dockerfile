@@ -1,4 +1,4 @@
-FROM python:3.9-slim
+FROM ubuntu:22.04
 
 RUN add-apt-repository multiverse && apt-get update && apt-get install -y \
     unrar \
