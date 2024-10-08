@@ -8,8 +8,6 @@ RUN apt-get update && apt-get install -y \
     wget \
     && apt-get clean
 
-RUN ln -s /usr/bin/python3 /usr/bin/python && ln -s /usr/bin/pip3 /usr/bin/pip
-
 WORKDIR /app
 
 COPY requirements.txt .
