@@ -1,6 +1,6 @@
 FROM ubuntu:22.04
 
-RUN add-apt-repository multiverse && apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y \
     unrar \
     rar \
     wget \
