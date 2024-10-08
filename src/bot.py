@@ -115,7 +115,7 @@ async def add_file_handler(event: MessageEvent):
         return
     
     if event.file.mime_type == 'application/zip' and tasks[event.sender_id]['message_ids']:
-        tasks.pop(event.sender_id)
+        tasks[event.sender_id]['message_ids'].clear()
     
     message_size = event.file.size
     current_size = sum(
