@@ -15,7 +15,7 @@ from telethon import TelegramClient
 from telethon.events import NewMessage, StopPropagation
 from telethon.tl.custom import Message
 
-from utils import download_files,upload_files, add_to_zip,is_approved_chat,is_admin,add_approved_chat,remove_approved_chat
+from utils import download_files,upload_files, add_to_zip,is_approved_chat,is_admin,add_approved_chat,remove_approved_chat,download_progress_callback
 
 load_dotenv()
 
@@ -234,8 +234,12 @@ async def unzip_handler(event: MessageEvent):
         # Unzip the file
         root = STORAGE / f'{event.sender_id}/'
         zip_path = root / zip_file.file.name
-
-        await zip_file.download_media(file=zip_path)
+        
+        progress_msg = await event.respond('Downloading your files...')
+        last_message = {'content': ''}
+        last_update_time = {'time': 0}
+       
+        await zip_file.download_media(file=zip_path,progress_callback = lambda received, total, progress_message=progress_msg, last_message=last_message, last_update_time=last_update_time, file_name=zip_file.file.name: download_progress_callback(received, total, progress_message, last_message, last_update_time, file_name))
 
         try:
             with ZipFile(zip_path, 'r') as zip_ref:
@@ -244,7 +248,7 @@ async def unzip_handler(event: MessageEvent):
             zip_path.unlink()  # Remove the zip file after extraction
             extracted_files = list(root.glob('*'))  # Get the list of extracted files
             for file in extracted_files:
-                await bot.send_file(file=file)
+                await bot.send_file(event.chat_id, file=file)
 
 
         except Exception as e:
