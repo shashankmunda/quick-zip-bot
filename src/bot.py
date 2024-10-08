@@ -101,6 +101,22 @@ async def welcome_handler(event: MessageEvent):
 
     raise StopPropagation
 
+@bot.on(NewMessage(pattern='/broadcast'))
+async def broadcast_handler(event: MessageEvent):
+    if is_admin(event.sender_id):
+        message_content = event.message.message.split(maxsplit=1)[1]
+        success_count = 0
+        failure_count = 0
+        for user_id in tasks:
+            try:
+                await bot.send_message(user_id, message_content)
+                success_count += 1
+            except Exception as e:
+                logging.error(f"Failed to send message to {user_id}: {e}")
+                failure_count += 1
+        await event.respond(f"Broadcast completed: {success_count} succeeded, {failure_count} failed.")
+    else:
+        await event.respond("You are not authorized to use this command.")
 
 @bot.on(NewMessage(
     func=lambda e: e.sender_id in tasks and e.file is not None))
