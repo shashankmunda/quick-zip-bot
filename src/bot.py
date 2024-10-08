@@ -9,6 +9,7 @@ import asyncio
 import signal
 import sys
 from zipfile import ZipFile
+import rarfile
 
 from dotenv import load_dotenv
 from telethon import TelegramClient
@@ -114,7 +115,7 @@ async def add_file_handler(event: MessageEvent):
     if event.sender_id not in tasks:
         return
     
-    if event.file.mime_type == 'application/zip' and tasks[event.sender_id]['message_ids']:
+    if event.file.mime_type in ['application/zip','application/rar'] and tasks[event.sender_id]['message_ids']:
         tasks[event.sender_id]['message_ids'].clear()
     
     message_size = event.file.size
@@ -219,7 +220,7 @@ async def zip_handler(event: MessageEvent):
 
     raise StopPropagation
 
-@bot.on(NewMessage(pattern='/unzip'))
+@bot.on(NewMessage(pattern='/extract'))
 async def unzip_handler(event: MessageEvent):
     """
     Unzips a file and returns the extracted content.
@@ -229,23 +230,31 @@ async def unzip_handler(event: MessageEvent):
     else:
         # Download the zip file
         messages = await bot.get_messages(event.sender_id, ids=tasks[event.sender_id]['message_ids'])
-        zip_file = messages[0]  # Assuming only one zip file is being sent
+        compressed_file = messages[0]  # Assuming only one zip file is being sent
 
         # Unzip the file
         root = STORAGE / f'{event.sender_id}/'
-        zip_path = root / zip_file.file.name
+        compressed_file_path = root / compressed_file.file.name
         
         progress_msg = await event.respond('Downloading your files...')
         last_message = {'content': ''}
         last_update_time = {'time': 0}
        
-        await zip_file.download_media(file=zip_path,progress_callback = lambda received, total, progress_message=progress_msg, last_message=last_message, last_update_time=last_update_time, file_name=zip_file.file.name: download_progress_callback(received, total, progress_message, last_message, last_update_time, file_name))
+        await compressed_file.download_media(file=compressed_file_path,progress_callback = lambda received, total, progress_message=progress_msg, last_message=last_message, last_update_time=last_update_time, file_name=zip_file.file.name: download_progress_callback(received, total, progress_message, last_message, last_update_time, file_name))
 
+        if progress_msg:
+            progress_msg.edit("Starting to unzip your files")
+        else:
+            progress_msg = await event.respond("Starting to unzip your files")
         try:
-            with ZipFile(zip_path, 'r') as zip_ref:
-                zip_ref.extractall(root)  # Extract the contents to the root folder
+            if compressed_file_path.suffix == '.zip':
+                with ZipFile(compressed_file_path, 'r') as zip_ref:
+                    zip_ref.extractall(root)  # Extract the contents to the root folder
+            elif compressed_file_path.suffix == '.rar':
+                with rarfile.RarFile(compressed_file_path) as rar_ref:
+                    rar_ref.extractall(root)  # Extract the contents to the root folder
              # Cleanup
-            zip_path.unlink()  # Remove the zip file after extraction
+            compressed_file_path.unlink()  # Remove the zip file after extraction
             extracted_files = list(root.glob('*'))  # Get the list of extracted files
             for file in extracted_files:
                 await bot.send_file(event.chat_id, file=file)
