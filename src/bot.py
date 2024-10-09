@@ -47,7 +47,7 @@ bot = TelegramClient(
 ).start(bot_token=BOT_TOKEN)
 
 @bot.on(NewMessage(pattern='/approvechat'))
-async def add_chat(event):
+async def add_chat(event: MessageEvent):
     user_id = event.sender_id
     chat_id = event.chat_id
 
@@ -61,7 +61,7 @@ async def add_chat(event):
     raise StopPropagation
 
 @bot.on(NewMessage(pattern='/removechat'))
-async def remove_chat(event):
+async def remove_chat(event: MessageEvent):
     user_id = event.sender_id
     chat_id = event.chat_id
 
@@ -101,6 +101,22 @@ async def welcome_handler(event: MessageEvent):
 
     raise StopPropagation
 
+@bot.on(NewMessage(pattern='/broadcast'))
+async def broadcast_handler(event: MessageEvent):
+    if is_admin(event.sender_id):
+        message_content = event.message.message.split(maxsplit=1)[1]
+        success_count = 0
+        failure_count = 0
+        for user_id in tasks:
+            try:
+                await bot.send_message(user_id, message_content)
+                success_count += 1
+            except Exception as e:
+                logging.error(f"Failed to send message to {user_id}: {e}")
+                failure_count += 1
+        await event.respond(f"Broadcast completed: {success_count} succeeded, {failure_count} failed.")
+    else:
+        await event.respond("You are not authorized to use this command.")
 
 @bot.on(NewMessage(
     func=lambda e: e.sender_id in tasks and e.file is not None))
@@ -108,7 +124,7 @@ async def add_file_handler(event: MessageEvent):
     """
     Stores the ID of messages sended with files by this user.
     """
-    if not is_approved_chat(event.sender_id):
+    if not is_approved_chat(event.chat_id):
         await event.respond('This bot can only be run in approved chats.')
         return
     
@@ -138,7 +154,7 @@ async def list_files_handler(event: MessageEvent):
     """
     Lists the files currently added to the staging by the user
     """
-    if not is_approved_chat(event.sender_id):
+    if not is_approved_chat(event.chat_id):
         await event.respond('This bot can only be run in approved chats.')
         return
     
@@ -174,7 +190,7 @@ async def zip_handler(event: MessageEvent):
     Zips the media of messages corresponding to the IDs saved for this user in
     tasks. The zip filename must be provided in the command.
     """
-    if not is_approved_chat(event.sender_id):
+    if not is_approved_chat(event.chat_id):
         await event.respond('This bot can only be run in approved chats.')
         return
     
@@ -240,7 +256,7 @@ async def unzip_handler(event: MessageEvent):
         last_message = {'content': ''}
         last_update_time = {'time': 0}
        
-        await compressed_file.download_media(file=compressed_file_path,progress_callback = lambda received, total, progress_message=progress_msg, last_message=last_message, last_update_time=last_update_time, file_name=zip_file.file.name: download_progress_callback(received, total, progress_message, last_message, last_update_time, file_name))
+        await compressed_file.download_media(file=compressed_file_path,progress_callback = lambda received, total, progress_message=progress_msg, last_message=last_message, last_update_time=last_update_time, file_name=compressed_file.file.name: download_progress_callback(received, total, progress_message, last_message, last_update_time, file_name))
 
         if progress_msg:
             progress_msg.edit("Starting to unzip your files")

@@ -31,7 +31,7 @@ def release_connection(conn):
     db_pool.putconn(conn)
 
 def is_admin(user_id):
-    return user_id == os.environ['ADMIN_ID']
+    return str(user_id) == os.environ['ADMIN_ID']
 
 # Modified function to check if chat is approved
 def is_approved_chat(chat_id):
