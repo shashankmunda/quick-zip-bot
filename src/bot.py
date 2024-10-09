@@ -47,7 +47,7 @@ bot = TelegramClient(
 ).start(bot_token=BOT_TOKEN)
 
 @bot.on(NewMessage(pattern='/approvechat'))
-async def add_chat(event):
+async def add_chat(event: MessageEvent):
     user_id = event.sender_id
     chat_id = event.chat_id
 
@@ -61,7 +61,7 @@ async def add_chat(event):
     raise StopPropagation
 
 @bot.on(NewMessage(pattern='/removechat'))
-async def remove_chat(event):
+async def remove_chat(event: MessageEvent):
     user_id = event.sender_id
     chat_id = event.chat_id
 
