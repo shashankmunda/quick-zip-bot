@@ -124,7 +124,7 @@ async def add_file_handler(event: MessageEvent):
     """
     Stores the ID of messages sended with files by this user.
     """
-    if not is_approved_chat(event.sender_id):
+    if not is_approved_chat(event.chat_id):
         await event.respond('This bot can only be run in approved chats.')
         return
     
@@ -154,7 +154,7 @@ async def list_files_handler(event: MessageEvent):
     """
     Lists the files currently added to the staging by the user
     """
-    if not is_approved_chat(event.sender_id):
+    if not is_approved_chat(event.chat_id):
         await event.respond('This bot can only be run in approved chats.')
         return
     
@@ -190,7 +190,7 @@ async def zip_handler(event: MessageEvent):
     Zips the media of messages corresponding to the IDs saved for this user in
     tasks. The zip filename must be provided in the command.
     """
-    if not is_approved_chat(event.sender_id):
+    if not is_approved_chat(event.chat_id):
         await event.respond('This bot can only be run in approved chats.')
         return
     
@@ -256,7 +256,7 @@ async def unzip_handler(event: MessageEvent):
         last_message = {'content': ''}
         last_update_time = {'time': 0}
        
-        await compressed_file.download_media(file=compressed_file_path,progress_callback = lambda received, total, progress_message=progress_msg, last_message=last_message, last_update_time=last_update_time, file_name=zip_file.file.name: download_progress_callback(received, total, progress_message, last_message, last_update_time, file_name))
+        await compressed_file.download_media(file=compressed_file_path,progress_callback = lambda received, total, progress_message=progress_msg, last_message=last_message, last_update_time=last_update_time, file_name=compressed_file.file.name: download_progress_callback(received, total, progress_message, last_message, last_update_time, file_name))
 
         if progress_msg:
             progress_msg.edit("Starting to unzip your files")
