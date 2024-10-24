@@ -95,9 +95,9 @@ async def welcome_handler(event: MessageEvent):
     Sends a welcome message to the bot on start.
     """
     if is_approved_chat(event.chat_id):
-        await event.respond('Welcome to SM Bot 👋')
+        await event.reply('Welcome to SM Bot 👋')
     else:
-        await event.respond('This bot can only be run in approved chats.')
+        await event.reply('This bot can only be run in approved chats.')
 
     raise StopPropagation
 
@@ -125,7 +125,7 @@ async def add_file_handler(event: MessageEvent):
     Stores the ID of messages sended with files by this user.
     """
     if not is_approved_chat(event.chat_id):
-        await event.respond('This bot can only be run in approved chats.')
+        await event.reply('This bot can only be run in approved chats.')
         return
     
     if event.sender_id not in tasks:
@@ -140,7 +140,7 @@ async def add_file_handler(event: MessageEvent):
     )
     
     if current_size + message_size > MAX_SIZE:
-        await event.respond("Adding this file will exceed the 2 GB limit. Please send smaller files.")
+        await event.reply("Adding this file will exceed the 2 GB limit. Please send smaller files.")
         return
     
     if event.sender_id in tasks:
@@ -155,15 +155,15 @@ async def list_files_handler(event: MessageEvent):
     Lists the files currently added to the staging by the user
     """
     if not is_approved_chat(event.chat_id):
-        await event.respond('This bot can only be run in approved chats.')
+        await event.reply('This bot can only be run in approved chats.')
         return
     
     if event.sender_id not in tasks:
-        await event.respond('You must use /add first.')
+        await event.reply('You must use /add first.')
         return
     
     elif not tasks[event.sender_id]:
-        await event.respond('No files to compress.')
+        await event.reply('No files to compress.')
         return
     
     else:
@@ -176,11 +176,12 @@ async def list_files_handler(event: MessageEvent):
                 if i!=0: 
                     msg+=f'\n'
                 msg+=f'<b>{file[0]}:{file[1]}</b>'
-            await event.respond(msg, parse_mode='html')
+            msg = f'List of files added :\n'+msg
+            await event.reply(msg, parse_mode='html')
 
         except Exception as e:
             logging.error(f"Error during listing files: {e}")
-            await event.respond(f"An error occurred: {str(e)}")
+            await event.reply(f"An error occurred: {str(e)}")
     
     raise StopPropagation
 
@@ -191,15 +192,15 @@ async def zip_handler(event: MessageEvent):
     tasks. The zip filename must be provided in the command.
     """
     if not is_approved_chat(event.chat_id):
-        await event.respond('This bot can only be run in approved chats.')
+        await event.reply('This bot can only be run in approved chats.')
         return
     
     if event.sender_id not in tasks:
-        await event.respond('You must use /add first.')
+        await event.reply('You must use /add first.')
         return
     
     elif not tasks[event.sender_id]:
-        await event.respond('You must send me some files first.')
+        await event.reply('You must send me some files first.')
         return
     
     else:
@@ -209,7 +210,7 @@ async def zip_handler(event: MessageEvent):
             zip_size = sum([m.file.size for m in messages])
 
             if zip_size > 1024 * 1024 * 2000:   # zip_size > 1.95 GB approximately
-                await event.respond('Total filesize don\'t must exceed 2.0 GB.')
+                await event.reply('Total filesize don\'t must exceed 2.0 GB.')
                 return
             
             root = STORAGE / f'{event.sender_id}/'
@@ -225,7 +226,7 @@ async def zip_handler(event: MessageEvent):
             
         except Exception as e:
             logging.error(f"Error during file processing: {e}")
-            await event.respond(f"An error occurred: {str(e)}")
+            await event.reply(f"An error occurred: {str(e)}")
 
         finally:
             # Clean up files after sending or error
@@ -259,7 +260,7 @@ async def unzip_handler(event: MessageEvent):
         await compressed_file.download_media(file=compressed_file_path,progress_callback = lambda received, total, progress_message=progress_msg, last_message=last_message, last_update_time=last_update_time, file_name=compressed_file.file.name: download_progress_callback(received, total, progress_message, last_message, last_update_time, file_name))
 
         if progress_msg:
-            progress_msg.edit("Starting to unzip your files")
+            await progress_msg.edit("Starting to unzip your files")
         else:
             progress_msg = await event.respond("Starting to unzip your files")
         try:

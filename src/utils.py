@@ -122,11 +122,11 @@ async def upload_files(
         zipfile: any,
         file_title: any
 ):
-    progress_message = await event.respond('Preparing to upload your files...')
+    progress_message = await client.send_message(event.sender_id,'Preparing to upload your files...')
     last_message = {'content': ''}
     last_update_time = {'time': 0}
     await client.send_file(
-        event.chat_id,
+        event.sender_id,
         caption='Done!',
         file=zipfile,
         progress_callback=lambda current, total: upload_progress_callback(current, total, file_title, progress_message, last_message, last_update_time)
@@ -162,7 +162,7 @@ async def download_files(
                 pass
             else:
                  # Send a new message to the user indicating that the download started
-                progress_message = await client.send_message(msg.chat_id, "Download starting...")
+                progress_message = await client.send_message(msg.sender_id, "Download starting...")
                 last_message = {'content': ''}
                 last_update_time = {'time': 0}
 
