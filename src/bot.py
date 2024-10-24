@@ -169,7 +169,7 @@ async def list_files_handler(event: MessageEvent):
     else:
         try:
             messages = await bot.get_messages(
-                event.sender_id, ids=tasks[event.sender_id]['message_ids'])
+                event.chat_id, ids=tasks[event.sender_id]['message_ids'])
             files = [[m.file.name,m.file.mime_type] for m in messages]
             msg=''
             for i,file in enumerate(files): 
