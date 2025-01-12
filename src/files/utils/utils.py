@@ -8,27 +8,10 @@ from telethon import TelegramClient
 from dotenv import load_dotenv
 from telethon.tl.custom import Message
 from psycopg2 import pool
+from db_utils import get_connection,release_connection
 
 
 load_dotenv()
-
-# Initialize the connection pool
-db_pool = psycopg2.pool.SimpleConnectionPool(
-    minconn=1, 
-    maxconn=10,  # adjust based on your needs
-    host=os.environ['DATABASE_HOST'],
-    database=os.environ['DATABASE_NAME'],
-    user=os.environ['DATABASE_USER'],
-    password=os.environ['DATABASE_PASSWORD']
-)
-
-# Get a connection from the pool
-def get_connection():
-    return db_pool.getconn()
-
-# Release the connection back to the pool
-def release_connection(conn):
-    db_pool.putconn(conn)
 
 def is_admin(user_id):
     return str(user_id) == os.environ['ADMIN_ID']
@@ -49,7 +32,7 @@ def add_approved_chat(chat_id):
             cur.execute("INSERT INTO approved_chats (chat_id) VALUES (%s) ON CONFLICT DO NOTHING", (chat_id,))
             conn.commit()
         except Exception as e:
-            print(f"Error adding chat: {e}")
+            logging.error(f"Error adding chat: {e}")
             conn.rollback()
         finally:
             release_connection(conn)
@@ -87,7 +70,7 @@ async def download_progress_callback(received_bytes: int, total_bytes: int, prog
             if progress == 100:
                 await progress_message.delete()
         except Exception as e:
-            print(f"Error updating message: {e}")
+            logging.error(f"Error updating message: {e}")
 
 async def upload_progress_callback(current_bytes, total_bytes,zipfile, progress_message, last_message, last_update_time):
     """
@@ -114,7 +97,7 @@ async def upload_progress_callback(current_bytes, total_bytes,zipfile, progress_
             if progress == 100:
                 await progress_message.delete()
         except Exception as e:
-            print(f"Error updating message: {e}")
+            logging.error(f"Error updating message: {e}")
 
 async def upload_files(
         client: TelegramClient, 
@@ -122,11 +105,11 @@ async def upload_files(
         zipfile: any,
         file_title: any
 ):
-    progress_message = await event.respond('Preparing to upload your files...')
+    progress_message = await client.send_message(event.sender_id,'Preparing to upload your files...')
     last_message = {'content': ''}
     last_update_time = {'time': 0}
     await client.send_file(
-        event.chat_id,
+        event.sender_id,
         caption='Done!',
         file=zipfile,
         progress_callback=lambda current, total: upload_progress_callback(current, total, file_title, progress_message, last_message, last_update_time)
@@ -162,7 +145,7 @@ async def download_files(
                 pass
             else:
                  # Send a new message to the user indicating that the download started
-                progress_message = await client.send_message(msg.chat_id, "Download starting...")
+                progress_message = await client.send_message(msg.sender_id, "Download starting...")
                 last_message = {'content': ''}
                 last_update_time = {'time': 0}
 
@@ -194,7 +177,7 @@ async def download_files(
                     if path is not None:
                         yield Path(path)
                 except Exception as e:
-                    print(f"Error downloading file: {e}")
+                    logging.error(f"Error downloading file: {e}")
 
 
 def add_to_zip(zip_file: Path, file: Path) -> None:

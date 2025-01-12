@@ -9,14 +9,13 @@ import asyncio
 import signal
 import sys
 from zipfile import ZipFile
-import rarfile
 
 from dotenv import load_dotenv
 from telethon import TelegramClient
 from telethon.events import NewMessage, StopPropagation
 from telethon.tl.custom import Message
 
-from utils import download_files,upload_files, add_to_zip,is_approved_chat,is_admin,add_approved_chat,remove_approved_chat,download_progress_callback
+from files.utils.utils import download_files,upload_files, add_to_zip,is_approved_chat,is_admin,add_approved_chat,remove_approved_chat,download_progress_callback
 
 load_dotenv()
 
@@ -95,9 +94,9 @@ async def welcome_handler(event: MessageEvent):
     Sends a welcome message to the bot on start.
     """
     if is_approved_chat(event.chat_id):
-        await event.respond('Welcome to SM Bot 👋')
+        await event.reply('Welcome to SM Bot 👋')
     else:
-        await event.respond('This bot can only be run in approved chats.')
+        await event.reply('This bot can only be run in approved chats.')
 
     raise StopPropagation
 
@@ -125,7 +124,7 @@ async def add_file_handler(event: MessageEvent):
     Stores the ID of messages sended with files by this user.
     """
     if not is_approved_chat(event.chat_id):
-        await event.respond('This bot can only be run in approved chats.')
+        await event.reply('This bot can only be run in approved chats.')
         return
     
     if event.sender_id not in tasks:
@@ -140,7 +139,7 @@ async def add_file_handler(event: MessageEvent):
     )
     
     if current_size + message_size > MAX_SIZE:
-        await event.respond("Adding this file will exceed the 2 GB limit. Please send smaller files.")
+        await event.reply("Adding this file will exceed the 2 GB limit. Please send smaller files.")
         return
     
     if event.sender_id in tasks:
@@ -155,32 +154,33 @@ async def list_files_handler(event: MessageEvent):
     Lists the files currently added to the staging by the user
     """
     if not is_approved_chat(event.chat_id):
-        await event.respond('This bot can only be run in approved chats.')
+        await event.reply('This bot can only be run in approved chats.')
         return
     
     if event.sender_id not in tasks:
-        await event.respond('You must use /add first.')
+        await event.reply('You must use /add first.')
         return
     
     elif not tasks[event.sender_id]:
-        await event.respond('No files to compress.')
+        await event.reply('No files to compress.')
         return
     
     else:
         try:
             messages = await bot.get_messages(
-                event.sender_id, ids=tasks[event.sender_id]['message_ids'])
+                event.chat_id, ids=tasks[event.sender_id]['message_ids'])
             files = [[m.file.name,m.file.mime_type] for m in messages]
             msg=''
             for i,file in enumerate(files): 
                 if i!=0: 
                     msg+=f'\n'
                 msg+=f'<b>{file[0]}:{file[1]}</b>'
-            await event.respond(msg, parse_mode='html')
+            msg = f'List of files added :\n'+msg
+            await event.reply(msg, parse_mode='html')
 
         except Exception as e:
             logging.error(f"Error during listing files: {e}")
-            await event.respond(f"An error occurred: {str(e)}")
+            await event.reply(f"An error occurred: {str(e)}")
     
     raise StopPropagation
 
@@ -191,15 +191,15 @@ async def zip_handler(event: MessageEvent):
     tasks. The zip filename must be provided in the command.
     """
     if not is_approved_chat(event.chat_id):
-        await event.respond('This bot can only be run in approved chats.')
+        await event.reply('This bot can only be run in approved chats.')
         return
     
     if event.sender_id not in tasks:
-        await event.respond('You must use /add first.')
+        await event.reply('You must use /add first.')
         return
     
     elif not tasks[event.sender_id]:
-        await event.respond('You must send me some files first.')
+        await event.reply('You must send me some files first.')
         return
     
     else:
@@ -209,7 +209,7 @@ async def zip_handler(event: MessageEvent):
             zip_size = sum([m.file.size for m in messages])
 
             if zip_size > 1024 * 1024 * 2000:   # zip_size > 1.95 GB approximately
-                await event.respond('Total filesize don\'t must exceed 2.0 GB.')
+                await event.reply('Total filesize don\'t must exceed 2.0 GB.')
                 return
             
             root = STORAGE / f'{event.sender_id}/'
@@ -225,7 +225,7 @@ async def zip_handler(event: MessageEvent):
             
         except Exception as e:
             logging.error(f"Error during file processing: {e}")
-            await event.respond(f"An error occurred: {str(e)}")
+            await event.reply(f"An error occurred: {str(e)}")
 
         finally:
             # Clean up files after sending or error
@@ -233,60 +233,6 @@ async def zip_handler(event: MessageEvent):
                 await get_running_loop().run_in_executor(
                     None, rmtree, STORAGE / str(event.sender_id))
             tasks.pop(event.sender_id)
-
-    raise StopPropagation
-
-@bot.on(NewMessage(pattern='/extract'))
-async def unzip_handler(event: MessageEvent):
-    """
-    Unzips a file and returns the extracted content.
-    """
-    if event.sender_id not in tasks:
-        await event.respond('You must send a zip file first.')
-    else:
-        # Download the zip file
-        messages = await bot.get_messages(event.sender_id, ids=tasks[event.sender_id]['message_ids'])
-        compressed_file = messages[0]  # Assuming only one zip file is being sent
-
-        # Unzip the file
-        root = STORAGE / f'{event.sender_id}/'
-        compressed_file_path = root / compressed_file.file.name
-        
-        progress_msg = await event.respond('Downloading your files...')
-        last_message = {'content': ''}
-        last_update_time = {'time': 0}
-       
-        await compressed_file.download_media(file=compressed_file_path,progress_callback = lambda received, total, progress_message=progress_msg, last_message=last_message, last_update_time=last_update_time, file_name=compressed_file.file.name: download_progress_callback(received, total, progress_message, last_message, last_update_time, file_name))
-
-        if progress_msg:
-            progress_msg.edit("Starting to unzip your files")
-        else:
-            progress_msg = await event.respond("Starting to unzip your files")
-        try:
-            if compressed_file_path.suffix == '.zip':
-                with ZipFile(compressed_file_path, 'r') as zip_ref:
-                    zip_ref.extractall(root)  # Extract the contents to the root folder
-            elif compressed_file_path.suffix == '.rar':
-                with rarfile.RarFile(compressed_file_path) as rar_ref:
-                    rar_ref.extractall(root)  # Extract the contents to the root folder
-             # Cleanup
-            compressed_file_path.unlink()  # Remove the zip file after extraction
-            extracted_files = list(root.glob('*'))  # Get the list of extracted files
-            for file in extracted_files:
-                await bot.send_file(event.chat_id, file=file)
-
-
-        except Exception as e:
-            await event.respond(f"Failed to unzip: {e}")
-
-        finally:
-            # Clean up files after sending or error
-            if (STORAGE / str(event.sender_id)).exists():
-                await get_running_loop().run_in_executor(
-                    None, rmtree, STORAGE / str(event.sender_id))
-            tasks.pop(event.sender_id)
-
-       
 
     raise StopPropagation
 
