@@ -192,7 +192,7 @@ async def download_files(
                         )
                     ))
                     next_msg_index += 1
-                progress_message.delete()
+                await progress_message.delete()
         
         if pending:
             done, pending = await wait(pending, return_when=FIRST_COMPLETED)
