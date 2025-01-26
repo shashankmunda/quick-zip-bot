@@ -151,6 +151,7 @@ async def download_files(
     root = root or Path('./')
 
     next_msg_index = 0
+    curr_ctr = 0
     pending = set()
     while next_msg_index < len(msgs) or pending:
         # fill the pending set with tasks until reach conc_max
@@ -167,13 +168,21 @@ async def download_files(
 
                 if msg.grouped_id:
                     grouped_msgs = await _get_media_posts_in_group(msg.chat_id,msg)
-                    for grouped_msg in grouped_msgs:
+                    all_done = True
+                    for grouped_msg in grouped_msgs[curr_ctr:,]:
                         logging.info(f'Downloading {grouped_msg.file.name}')
-                        pending.add(asyncio.create_task(grouped_msg.download_media(
-                            file=root / (grouped_msg.file.name or 'no_name'),
-                            progress_callback = lambda received, total, progress_message=progress_message, last_message=last_message, last_update_time=last_update_time, file_name=grouped_msg.file.name: download_progress_callback(received, total, progress_message, last_message, last_update_time, file_name)
-                            )
-                        ))
+                        if len(pending) < conc_max: 
+                            pending.add(asyncio.create_task(grouped_msg.download_media(
+                                file=root / (grouped_msg.file.name or 'no_name'),
+                                progress_callback = lambda received, total, progress_message=progress_message, last_message=last_message, last_update_time=last_update_time, file_name=grouped_msg.file.name: download_progress_callback(received, total, progress_message, last_message, last_update_time, file_name)
+                                )
+                            ))
+                            curr_ctr += 1
+                        else:
+                            all_done = False
+                            break
+                    if all_done:
+                        curr_ctr = 0
                         next_msg_index += 1  
                 else:
                     logging.info(f'Downloading {msg.file.name}')
@@ -183,6 +192,7 @@ async def download_files(
                         )
                     ))
                     next_msg_index += 1
+                progress_message.delete()
         
         if pending:
             done, pending = await wait(pending, return_when=FIRST_COMPLETED)
