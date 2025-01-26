@@ -83,8 +83,8 @@ async def download_progress_callback(received_bytes: int, total_bytes: int, prog
             await progress_message.edit(new_message_content, parse_mode='html')
             last_message['content'] = new_message_content
             last_update_time['time'] = current_time
-            if progress == 100:
-                await progress_message.delete()
+            # if progress == 100:
+            #     await progress_message.delete()
         except Exception as e:
             logging.error(f"Error updating message: {e}")
 
@@ -161,7 +161,7 @@ async def download_files(
                 pass
             else:
                  # Send a new message to the user indicating that the download started
-                progress_message = await client.send_message(msg.sender_id, "Download starting...")
+                progress_message = await client.edit_message(msg.sender_id, "Download starting...")
                 last_message = {'content': ''}
                 last_update_time = {'time': 0}
 
@@ -182,7 +182,7 @@ async def download_files(
                             file=root / (grouped_msg.file.name or 'no_name'),
                             progress_callback=lambda received, total, progress_message=progress_message, last_message=last_message, last_update_time=last_update_time, file_name=grouped_msg.file.name: download_progress_callback(received, total, progress_message, last_message, last_update_time, file_name)
                         )))
-                    next_msg_index += 1  
+                    next_msg_index += 1
                 else:
                     logging.info(f'Downloading {msg.file.name}')
                     pending.add(asyncio.create_task(msg.download_media(
