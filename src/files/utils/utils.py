@@ -83,8 +83,8 @@ async def download_progress_callback(received_bytes: int, total_bytes: int, prog
             await progress_message.edit(new_message_content, parse_mode='html')
             last_message['content'] = new_message_content
             last_update_time['time'] = current_time
-            # if progress == 100:
-            #     await progress_message.delete()
+            if progress == 100:
+                await progress_message.delete()
         except Exception as e:
             logging.error(f"Error updating message: {e}")
 
@@ -192,7 +192,6 @@ async def download_files(
                         )
                     ))
                     next_msg_index += 1
-                await progress_message.delete()
         
         if pending:
             done, pending = await wait(pending, return_when=FIRST_COMPLETED)
