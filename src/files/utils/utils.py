@@ -182,7 +182,7 @@ async def download_files(
                             file=root / (grouped_msg.file.name or 'no_name'),
                             progress_callback=lambda received, total, progress_message=progress_message, last_message=last_message, last_update_time=last_update_time, file_name=grouped_msg.file.name: download_progress_callback(received, total, progress_message, last_message, last_update_time, file_name)
                         )))
-                        next_msg_index += 1  
+                    next_msg_index += 1  
                 else:
                     logging.info(f'Downloading {msg.file.name}')
                     pending.add(asyncio.create_task(msg.download_media(
