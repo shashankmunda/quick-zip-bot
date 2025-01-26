@@ -7,6 +7,7 @@ import time,os,psycopg2,logging,asyncio
 from telethon import TelegramClient
 from dotenv import load_dotenv
 from telethon.tl.custom import Message
+from psycopg2 import pool
 
 load_dotenv()
 
