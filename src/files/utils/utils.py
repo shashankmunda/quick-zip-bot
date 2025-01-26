@@ -83,8 +83,8 @@ async def download_progress_callback(received_bytes: int, total_bytes: int, prog
             await progress_message.edit(new_message_content, parse_mode='html')
             last_message['content'] = new_message_content
             last_update_time['time'] = current_time
-            if progress == 100:
-                await progress_message.delete()
+            # if progress == 100:
+            #     await progress_message.delete()
         except Exception as e:
             logging.error(f"Error updating message: {e}")
 
@@ -169,7 +169,7 @@ async def download_files(
                 if msg.grouped_id:
                     grouped_msgs = await _get_media_posts_in_group(msg.chat_id,msg)
                     all_done = True
-                    for grouped_msg in grouped_msgs[curr_ctr:,]:
+                    for grouped_msg in grouped_msgs[curr_ctr:]:
                         logging.info(f'Downloading {grouped_msg.file.name}')
                         if len(pending) < conc_max: 
                             pending.add(asyncio.create_task(grouped_msg.download_media(
